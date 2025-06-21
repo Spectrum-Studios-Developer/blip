@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import re,math,sys,random,requests,signal
+import re,math,sys,random,requests,signal,time
 from typing import List,Dict,Any,Tuple,Optional
 
 class F:
@@ -21,6 +21,8 @@ class I:
   self.f={}
   self.s=[]
   self.interrupted=False
+  self.debug_mode=False
+  self.start_time=None
   signal.signal(signal.SIGINT,self._handle_interrupt)
   self.b={'print':self._print,'input':self._input,'int':self._i,'float':lambda x:float(str(x)),'str':str,'abs':abs,'sqrt':math.sqrt,'sin':math.sin,'cos':math.cos,'tan':math.tan,'asin':math.asin,'acos':math.acos,'atan':math.atan,'atan2':math.atan2,'sinh':math.sinh,'cosh':math.cosh,'tanh':math.tanh,'log':math.log,'log10':math.log10,'log2':math.log2,'exp':math.exp,'floor':math.floor,'ceil':math.ceil,'round':round,'max':max,'min':min,'pow':pow,'len':len,'type':lambda x:type(x).__name__,'sum':lambda l:sum(l)if isinstance(l,list)else l,'avg':lambda l:sum(l)/len(l)if isinstance(l,list)and l else 0,'factorial':self._fact,'gcd':math.gcd,'lcm':self._lcm,'mod':lambda x,y:x%y,'div':lambda x,y:x//y,'random':random.random,'randint':random.randint,'range':lambda*a:list(range(*[int(x)for x in a])),'append':self._app,'pop':self._pop,'size':len,'sort':sorted,'reverse':lambda l:l[::-1]if isinstance(l,list)else l,'pi':lambda:math.pi,'e':lambda:math.e,'deg':math.degrees,'rad':math.radians,'is_prime':self._prime,'fib':self._fib,'get':self._get,'post':self._post}
  
@@ -471,6 +473,10 @@ class I:
  
  def ex(self,c):
   ls=c.split('\n')
+  if ls and ls[0].strip()=='{debug}':
+   self.debug_mode=True
+   self.start_time=time.time()
+   ls=ls[1:]
   ln=0
   while ln<len(ls):
    try:
@@ -484,14 +490,25 @@ class I:
      elif l.startswith('while '):ln=self.ewh(ls,ln)+1
     elif l in('else','else;','end;'):ln+=1
     else:self.el(l);ln+=1
-   except KeyboardInterrupt:return
+   except KeyboardInterrupt:
+    if self.debug_mode and self.start_time:
+     elapsed=time.time()-self.start_time
+     print(f"\nProgram interrupted after {elapsed:.6f} seconds")
+    return
    except Exception as e:print(f"Error on line {ln+1}: {e}");break
+  if self.debug_mode and self.start_time:
+   elapsed=time.time()-self.start_time
+   print(f"\nProgram completed in {elapsed:.6f} seconds")
  
  def rf(self,fn):
   if not fn.endswith('.blip'):print("Error: File must have .blip extension");return
   try:
    with open(fn,'r')as f:self.ex(f.read())
-  except KeyboardInterrupt:return
+  except KeyboardInterrupt:
+   if self.debug_mode and self.start_time:
+    elapsed=time.time()-self.start_time
+    print(f"\nProgram interrupted after {elapsed:.6f} seconds")
+   return
   except FileNotFoundError:print(f"Error: File '{fn}' not found")
   except Exception as e:print(f"Error reading file: {e}")
 
