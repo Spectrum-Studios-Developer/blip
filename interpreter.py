@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import re,math,sys,random,requests
+import re,math,sys,random,requests,signal
 from typing import List,Dict,Any,Tuple,Optional
 
 class F:
@@ -20,10 +20,24 @@ class I:
   self.v={}
   self.f={}
   self.s=[]
-  self.b={'print':self._print,'input':lambda p="":input(str(p)),'int':self._i,'float':lambda x:float(str(x)),'str':str,'abs':abs,'sqrt':math.sqrt,'sin':math.sin,'cos':math.cos,'tan':math.tan,'asin':math.asin,'acos':math.acos,'atan':math.atan,'atan2':math.atan2,'sinh':math.sinh,'cosh':math.cosh,'tanh':math.tanh,'log':math.log,'log10':math.log10,'log2':math.log2,'exp':math.exp,'floor':math.floor,'ceil':math.ceil,'round':round,'max':max,'min':min,'pow':pow,'len':len,'type':lambda x:type(x).__name__,'sum':lambda l:sum(l)if isinstance(l,list)else l,'avg':lambda l:sum(l)/len(l)if isinstance(l,list)and l else 0,'factorial':self._fact,'gcd':math.gcd,'lcm':self._lcm,'mod':lambda x,y:x%y,'div':lambda x,y:x//y,'random':random.random,'randint':random.randint,'range':lambda*a:list(range(*[int(x)for x in a])),'append':self._app,'pop':self._pop,'size':len,'sort':sorted,'reverse':lambda l:l[::-1]if isinstance(l,list)else l,'pi':lambda:math.pi,'e':lambda:math.e,'deg':math.degrees,'rad':math.radians,'is_prime':self._prime,'fib':self._fib,'get':self._get,'post':self._post}
+  self.interrupted=False
+  signal.signal(signal.SIGINT,self._handle_interrupt)
+  self.b={'print':self._print,'input':self._input,'int':self._i,'float':lambda x:float(str(x)),'str':str,'abs':abs,'sqrt':math.sqrt,'sin':math.sin,'cos':math.cos,'tan':math.tan,'asin':math.asin,'acos':math.acos,'atan':math.atan,'atan2':math.atan2,'sinh':math.sinh,'cosh':math.cosh,'tanh':math.tanh,'log':math.log,'log10':math.log10,'log2':math.log2,'exp':math.exp,'floor':math.floor,'ceil':math.ceil,'round':round,'max':max,'min':min,'pow':pow,'len':len,'type':lambda x:type(x).__name__,'sum':lambda l:sum(l)if isinstance(l,list)else l,'avg':lambda l:sum(l)/len(l)if isinstance(l,list)and l else 0,'factorial':self._fact,'gcd':math.gcd,'lcm':self._lcm,'mod':lambda x,y:x%y,'div':lambda x,y:x//y,'random':random.random,'randint':random.randint,'range':lambda*a:list(range(*[int(x)for x in a])),'append':self._app,'pop':self._pop,'size':len,'sort':sorted,'reverse':lambda l:l[::-1]if isinstance(l,list)else l,'pi':lambda:math.pi,'e':lambda:math.e,'deg':math.degrees,'rad':math.radians,'is_prime':self._prime,'fib':self._fib,'get':self._get,'post':self._post}
+ 
+ def _handle_interrupt(self,sig,frame):
+  self.interrupted=True
+  print("\nProgram interrupted by user")
+  sys.exit(0)
+ 
+ def _check_interrupt(self):
+  if self.interrupted:raise KeyboardInterrupt
  
  def _print(self,*a):
   print(' '.join(str(x)for x in a))
+ 
+ def _input(self,p=""):
+  try:return input(str(p))
+  except KeyboardInterrupt:self._handle_interrupt(None,None)
  
  def _i(self,x):
   s=str(x)
@@ -56,19 +70,23 @@ class I:
   if n<=0:return 0
   if n==1:return 1
   a,b=0,1
-  for _ in range(2,n+1):a,b=b,a+b
+  for _ in range(2,n+1):
+   self._check_interrupt()
+   a,b=b,a+b
   return b
  
  def _get(self,u,h=None):
   try:
    r=requests.get(u,headers=h or{})
    return{'status':r.status_code,'content':r.text,'json':r.json()if'application/json'in r.headers.get('Content-Type','').lower()else None}
+  except KeyboardInterrupt:self._handle_interrupt(None,None)
   except Exception as e:return{'status':None,'error':str(e),'content':None,'json':None}
  
  def _post(self,u,d=None,h=None):
   try:
    r=requests.post(u,json=d,headers=h or{})
    return{'status':r.status_code,'content':r.text,'json':r.json()if'application/json'in r.headers.get('Content-Type','').lower()else None}
+  except KeyboardInterrupt:self._handle_interrupt(None,None)
   except Exception as e:return{'status':None,'error':str(e),'content':None,'json':None}
  
  def t(self,c):return[(m.lastgroup,m.group())for m in self.T.finditer(c)if m.lastgroup!='W']
@@ -76,28 +94,34 @@ class I:
  def e(self,t,s=0):return self.o(t,s)
  
  def o(self,t,s):
+  self._check_interrupt()
   l,p=self.a(t,s)
   while p<len(t)and t[p]==('L','or'):
+   self._check_interrupt()
    p+=1
    r,p=self.a(t,p)
    l=l or r
   return l,p
  
  def a(self,t,s):
+  self._check_interrupt()
   l,p=self.n(t,s)
   while p<len(t)and t[p]==('L','and'):
+   self._check_interrupt()
    p+=1
    r,p=self.n(t,p)
    l=l and r
   return l,p
  
  def n(self,t,s):
+  self._check_interrupt()
   if s<len(t)and t[s]==('L','not'):
    x,p=self.c(t,s+1)
    return not x,p
   return self.c(t,s)
  
  def c(self,t,s):
+  self._check_interrupt()
   l,p=self.ad(t,s)
   if p<len(t)and t[p][0]=='C':
    o=t[p][1]
@@ -108,8 +132,10 @@ class I:
   return l,p
  
  def ad(self,t,s):
+  self._check_interrupt()
   l,p=self.m(t,s)
   while p<len(t)and(t[p][0]=='O'and t[p][1]in'+-'or t[p][0]=='DD'):
+   self._check_interrupt()
    o=t[p][1]
    p+=1
    r,p=self.m(t,p)
@@ -118,8 +144,10 @@ class I:
   return l,p
  
  def m(self,t,s):
+  self._check_interrupt()
   l,p=self.u(t,s)
   while p<len(t)and t[p][0]=='O'and t[p][1]in'*/%':
+   self._check_interrupt()
    o=t[p][1]
    p+=1
    r,p=self.u(t,p)
@@ -129,6 +157,7 @@ class I:
   return l,p
  
  def u(self,t,s):
+  self._check_interrupt()
   if s<len(t)and t[s][0]=='O'and t[s][1]in'+-':
    o=t[s][1]
    x,p=self.pw(t,s+1)
@@ -136,6 +165,7 @@ class I:
   return self.pw(t,s)
  
  def pw(self,t,s):
+  self._check_interrupt()
   l,p=self.pr(t,s)
   if p<len(t)and t[p][0]=='P':
    p+=1
@@ -144,6 +174,7 @@ class I:
   return l,p
  
  def pr(self,t,s):
+  self._check_interrupt()
   if s>=len(t):raise SyntaxError("Unexpected end of expression")
   tp,tv=t[s]
   if tp=='N':return(float(tv)if'.'in tv else int(tv)),s+1
@@ -164,10 +195,12 @@ class I:
   raise SyntaxError(f"Unexpected token: {tv}")
  
  def di(self,t,s):
+  self._check_interrupt()
   p=s+1
   r={}
   if p<len(t)and t[p][0]!='RC':
    while True:
+    self._check_interrupt()
     if p>=len(t):raise SyntaxError("Expected dictionary key")
     kt,kv=t[p]
     if kt=='S':k=kv[1:-1];p+=1
@@ -185,6 +218,7 @@ class I:
   return r,p+1
  
  def pa(self,t,s):
+  self._check_interrupt()
   vn=t[s][1]
   if s+2>=len(t)or t[s+1][0]!='D'or t[s+2][0]!='I':raise SyntaxError("Invalid property access")
   pn=t[s+2][1]
@@ -199,10 +233,12 @@ class I:
   raise AttributeError(f"'{type(vv).__name__}' object has no attribute '{pn}'")
  
  def ls(self,t,s):
+  self._check_interrupt()
   p=s+1
   e=[]
   if p<len(t)and t[p][0]!='RB':
    while True:
+    self._check_interrupt()
     el,p=self.e(t,p)
     e.append(el)
     if p>=len(t):raise SyntaxError("Expected closing bracket")
@@ -213,6 +249,7 @@ class I:
   return e,p+1
  
  def la(self,t,s):
+  self._check_interrupt()
   vn=t[s][1]
   p=s+2
   i,p=self.e(t,p)
@@ -224,11 +261,13 @@ class I:
   except IndexError:raise IndexError("Index out of range")
  
  def fc(self,t,s):
+  self._check_interrupt()
   fn=t[s][1]
   p=s+2
   a=[]
   if p<len(t)and t[p][0]!='RP':
    while True:
+    self._check_interrupt()
     ar,p=self.e(t,p)
     a.append(ar)
     if p>=len(t):raise SyntaxError("Expected closing parenthesis")
@@ -242,6 +281,7 @@ class I:
   raise NameError(f"Function '{fn}' not defined")
  
  def cu(self,fn,a):
+  self._check_interrupt()
   fu=self.f[fn]
   if len(a)!=len(fu.p):raise TypeError(f"Function '{fn}' expects {len(fu.p)} arguments, got {len(a)}")
   ov=self.v.copy()
@@ -256,6 +296,7 @@ class I:
  def eb(self,bl):
   i=0
   while i<len(bl):
+   self._check_interrupt()
    l=bl[i].strip()
    if not l or l.startswith('#'):i+=1;continue
    if l.startswith('return '):
@@ -274,6 +315,7 @@ class I:
   return None
  
  def ps(self,t):
+  self._check_interrupt()
   if not t:return
   if t[0]==('K','break'):raise B()
   elif t[0]==('K','continue'):raise C()
@@ -355,6 +397,7 @@ class I:
   return el
  
  def efor(self,ls,sl):
+  self._check_interrupt()
   fol=ls[sl].strip()
   if fol.endswith(';'):fol=fol[:-1]
   t=self.t(fol)
@@ -364,6 +407,7 @@ class I:
   ov=self.v.get(vn)if hv else None
   try:
    for i in it:
+    self._check_interrupt()
     self.v[vn]=i
     try:self.ebb(ls,sl+1,el)
     except B:break
@@ -374,10 +418,12 @@ class I:
   return el
  
  def ewh(self,ls,sl):
+  self._check_interrupt()
   wl=ls[sl].strip()
   if wl.endswith(';'):wl=wl[:-1]
   el=self.be(ls,sl)
   while True:
+   self._check_interrupt()
    t=self.t(wl)
    _,co=self.pwh(t)
    if not co:break
@@ -387,6 +433,7 @@ class I:
   return el
  
  def eif(self,ls,sl):
+  self._check_interrupt()
   cl=ls[sl].strip()
   if cl.endswith(';'):cl=cl[:-1]
   t=self.t(cl)
@@ -403,6 +450,7 @@ class I:
  def ebb(self,ls,st,en):
   i=st
   while i<en:
+   self._check_interrupt()
    l=ls[i].strip()
    if not l or l.startswith('#')or l in('else','else;'):i+=1;continue
    if self.bs(l):
@@ -414,6 +462,7 @@ class I:
    else:self.el(l);i+=1
  
  def el(self,l):
+  self._check_interrupt()
   l=l.strip()
   if not l or l.startswith('#'):return
   if not l.endswith(';'):raise SyntaxError("Statement must end with semicolon")
@@ -425,6 +474,7 @@ class I:
   ln=0
   while ln<len(ls):
    try:
+    self._check_interrupt()
     l=ls[ln].strip()
     if not l or l.startswith('#'):ln+=1;continue
     if self.bs(l):
@@ -434,17 +484,21 @@ class I:
      elif l.startswith('while '):ln=self.ewh(ls,ln)+1
     elif l in('else','else;','end;'):ln+=1
     else:self.el(l);ln+=1
+   except KeyboardInterrupt:return
    except Exception as e:print(f"Error on line {ln+1}: {e}");break
  
  def rf(self,fn):
   if not fn.endswith('.blip'):print("Error: File must have .blip extension");return
   try:
    with open(fn,'r')as f:self.ex(f.read())
+  except KeyboardInterrupt:return
   except FileNotFoundError:print(f"Error: File '{fn}' not found")
   except Exception as e:print(f"Error reading file: {e}")
 
 def main():
- i=I()
- if len(sys.argv)>1:i.rf(sys.argv[1])
+ try:
+  i=I()
+  if len(sys.argv)>1:i.rf(sys.argv[1])
+ except KeyboardInterrupt:print("\nProgram interrupted by user")
 
 if __name__=="__main__":main()
