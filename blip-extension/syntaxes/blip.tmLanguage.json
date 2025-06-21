@@ -18,10 +18,16 @@
       "include": "#operators"
     },
     {
-      "include": "#functions"
+      "include": "#builtin-functions"
+    },
+    {
+      "include": "#function-calls"
     },
     {
       "include": "#variables"
+    },
+    {
+      "include": "#punctuation"
     }
   ],
   "repository": {
@@ -68,36 +74,76 @@
         {
           "name": "keyword.operator.arithmetic.blip",
           "match": "(\\*\\*|[+\\-*/%])"
+        }
+      ]
+    },
+    "builtin-functions": {
+      "patterns": [{
+        "name": "support.function.builtin.blip",
+        "match": "\\b(print|input|int|float|str|abs|sqrt|sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh|log|log10|log2|exp|floor|ceil|round|max|min|pow|len|type|sum|avg|factorial|gcd|lcm|mod|div|random|randint|range|append|pop|size|sort|reverse|pi|e|deg|rad|is_prime|fib|get|post)(?=\\s*\\()"
+      }]
+    },
+    "function-calls": {
+      "patterns": [{
+        "name": "entity.name.function.blip",
+        "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*(?=\\s*\\()"
+      }]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "name": "variable.other.property.blip",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\.[a-zA-Z_][a-zA-Z0-9_]*\\b"
         },
         {
-          "name": "punctuation.terminator.blip",
+          "name": "variable.other.blip",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.terminator.statement.blip",
           "match": ";"
         },
         {
-          "name": "punctuation.section.brackets.blip",
-          "match": "[\\[\\]]"
+          "name": "punctuation.section.brackets.begin.blip",
+          "match": "\\["
         },
         {
-          "name": "punctuation.section.parens.blip",
-          "match": "[\\(\\)]"
+          "name": "punctuation.section.brackets.end.blip",
+          "match": "\\]"
+        },
+        {
+          "name": "punctuation.section.parens.begin.blip",
+          "match": "\\("
+        },
+        {
+          "name": "punctuation.section.parens.end.blip",
+          "match": "\\)"
+        },
+        {
+          "name": "punctuation.section.braces.begin.blip",
+          "match": "\\{"
+        },
+        {
+          "name": "punctuation.section.braces.end.blip",
+          "match": "\\}"
         },
         {
           "name": "punctuation.separator.comma.blip",
           "match": ","
+        },
+        {
+          "name": "punctuation.separator.colon.blip",
+          "match": ":"
+        },
+        {
+          "name": "punctuation.accessor.dot.blip",
+          "match": "\\."
         }
       ]
-    },
-    "functions": {
-      "patterns": [{
-        "name": "entity.name.function.blip",
-        "match": "\\b(print|input|abs|sqrt|sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh|log|log10|log2|exp|floor|ceil|round|max|min|pow|len|type|sum|avg|factorial|gcd|lcm|mod|div|random|randint|range|append|pop|size|sort|reverse|pi|e|deg|rad|is_prime|fibonacci)(?=\\s*\\()"
-      }]
-    },
-    "variables": {
-      "patterns": [{
-        "name": "variable.other.blip",
-        "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
-      }]
     }
   },
   "scopeName": "source.blip"
