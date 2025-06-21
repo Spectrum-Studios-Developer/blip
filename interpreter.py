@@ -14,13 +14,16 @@ class B(Exception):pass
 class C(Exception):pass
 
 class I:
- T=re.compile(r'(?P<S>"[^"]*")|(?P<N>-?\d+\.?\d*)|(?P<I>[a-zA-Z_]\w*)|(?P<K>if|else|end|func|return|for|while|break|continue|in)|(?P<C>==|!=|<=|>=|<|>)|(?P<L>and|or|not)|(?P<A>=)|(?P<SC>;)|(?P<LP>\()|(?P<RP>\))|(?P<LB>\[)|(?P<RB>\])|(?P<LC>\{)|(?P<RC>\})|(?P<CO>:)|(?P<CM>,)|(?P<D>\.)|(?P<O>[\+\-\*/%])|(?P<P>\*\*)|(?P<W>\s+)|(?P<U>.)')
+ T=re.compile(r'(?P<S>"[^"]*")|(?P<N>-?\d+\.?\d*)|(?P<I>[a-zA-Z_]\w*)|(?P<K>if|else|end|func|return|for|while|break|continue|in)|(?P<C>==|!=|<=|>=|<|>)|(?P<L>and|or|not)|(?P<A>=)|(?P<SC>;)|(?P<LP>\()|(?P<RP>\))|(?P<LB>\[)|(?P<RB>\])|(?P<LC>\{)|(?P<RC>\})|(?P<CO>:)|(?P<DD>\.\.)|(?P<CM>,)|(?P<D>\.)|(?P<O>[\+\-\*/%])|(?P<P>\*\*)|(?P<W>\s+)|(?P<U>.)')
  
  def __init__(self):
   self.v={}
   self.f={}
   self.s=[]
-  self.b={'print':lambda*a:print(' '.join(str(x)for x in a)),'input':lambda p="":input(str(p)),'int':self._i,'float':lambda x:float(str(x)),'str':str,'abs':abs,'sqrt':math.sqrt,'sin':math.sin,'cos':math.cos,'tan':math.tan,'asin':math.asin,'acos':math.acos,'atan':math.atan,'atan2':math.atan2,'sinh':math.sinh,'cosh':math.cosh,'tanh':math.tanh,'log':math.log,'log10':math.log10,'log2':math.log2,'exp':math.exp,'floor':math.floor,'ceil':math.ceil,'round':round,'max':max,'min':min,'pow':pow,'len':len,'type':lambda x:type(x).__name__,'sum':lambda l:sum(l)if isinstance(l,list)else l,'avg':lambda l:sum(l)/len(l)if isinstance(l,list)and l else 0,'factorial':self._fact,'gcd':math.gcd,'lcm':self._lcm,'mod':lambda x,y:x%y,'div':lambda x,y:x//y,'random':random.random,'randint':random.randint,'range':lambda*a:list(range(*[int(x)for x in a])),'append':self._app,'pop':self._pop,'size':len,'sort':sorted,'reverse':lambda l:l[::-1]if isinstance(l,list)else l,'pi':lambda:math.pi,'e':lambda:math.e,'deg':math.degrees,'rad':math.radians,'is_prime':self._prime,'fib':self._fib,'get':self._get,'post':self._post}
+  self.b={'print':self._print,'input':lambda p="":input(str(p)),'int':self._i,'float':lambda x:float(str(x)),'str':str,'abs':abs,'sqrt':math.sqrt,'sin':math.sin,'cos':math.cos,'tan':math.tan,'asin':math.asin,'acos':math.acos,'atan':math.atan,'atan2':math.atan2,'sinh':math.sinh,'cosh':math.cosh,'tanh':math.tanh,'log':math.log,'log10':math.log10,'log2':math.log2,'exp':math.exp,'floor':math.floor,'ceil':math.ceil,'round':round,'max':max,'min':min,'pow':pow,'len':len,'type':lambda x:type(x).__name__,'sum':lambda l:sum(l)if isinstance(l,list)else l,'avg':lambda l:sum(l)/len(l)if isinstance(l,list)and l else 0,'factorial':self._fact,'gcd':math.gcd,'lcm':self._lcm,'mod':lambda x,y:x%y,'div':lambda x,y:x//y,'random':random.random,'randint':random.randint,'range':lambda*a:list(range(*[int(x)for x in a])),'append':self._app,'pop':self._pop,'size':len,'sort':sorted,'reverse':lambda l:l[::-1]if isinstance(l,list)else l,'pi':lambda:math.pi,'e':lambda:math.e,'deg':math.degrees,'rad':math.radians,'is_prime':self._prime,'fib':self._fib,'get':self._get,'post':self._post}
+ 
+ def _print(self,*a):
+  print(' '.join(str(x)for x in a))
  
  def _i(self,x):
   s=str(x)
@@ -106,11 +109,12 @@ class I:
  
  def ad(self,t,s):
   l,p=self.m(t,s)
-  while p<len(t)and t[p][0]=='O'and t[p][1]in'+-':
+  while p<len(t)and(t[p][0]=='O'and t[p][1]in'+-'or t[p][0]=='DD'):
    o=t[p][1]
    p+=1
    r,p=self.m(t,p)
-   l=l+r if o=='+'else l-r
+   if o=='..':l=str(l)+str(r)
+   else:l=l+r if o=='+'else l-r
   return l,p
  
  def m(self,t,s):
@@ -203,8 +207,8 @@ class I:
     e.append(el)
     if p>=len(t):raise SyntaxError("Expected closing bracket")
     if t[p][0]=='RB':break
-    if t[p][0]=='CM':p+=1
-    else:raise SyntaxError("Expected comma or closing bracket")
+    if t[p][0]in('CM','DD'):p+=1
+    else:raise SyntaxError("Expected comma, '..' or closing bracket")
   elif p>=len(t):raise SyntaxError("Expected closing bracket")
   return e,p+1
  
