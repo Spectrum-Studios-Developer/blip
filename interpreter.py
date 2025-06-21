@@ -3,6 +3,7 @@ import re
 import math
 import sys
 import random
+import requests
 from typing import List, Dict, Any, Tuple, Optional
 
 class BlipFunction:
@@ -17,15 +18,26 @@ class ReturnException(Exception):
     def __init__(self, value):
         self.value = value
 
+class BreakException(Exception):
+    pass
+
+class ContinueException(Exception):
+    pass
+
 class BlipInterpreter:
-    TOKEN_PATTERN = re.compile(r'(?P<NUMBER>-?\d+\.?\d*)|(?P<STRING>"[^"]*")|(?P<KEYWORD>if|else|end|func|return|for|while|break|continue|in)|(?P<IDENTIFIER>[a-zA-Z_][a-zA-Z0-9_]*)|(?P<COMPARISON>==|!=|<=|>=|<|>)|(?P<LOGICAL>and|or|not)|(?P<ASSIGN>=)|(?P<SEMICOLON>;)|(?P<LPAREN>\()|(?P<RPAREN>\))|(?P<LBRACKET>\[)|(?P<RBRACKET>\])|(?P<COMMA>,)|(?P<DOT>\.)|(?P<OPERATOR>[\+\-\*/%])|(?P<POWER>\*\*)|(?P<WHITESPACE>\s+)|(?P<UNKNOWN>.)')
+    TOKEN_PATTERN = re.compile(r'(?P<STRING>"[^"]*")|(?P<NUMBER>-?\d+\.?\d*)|(?P<IDENTIFIER>[a-zA-Z_]\w*)|(?P<KEYWORD>if|else|end|func|return|for|while|break|continue|in)|(?P<COMPARISON>==|!=|<=|>=|<|>)|(?P<LOGICAL>and|or|not)|(?P<ASSIGN>=)|(?P<SEMICOLON>;)|(?P<LPAREN>\()|(?P<RPAREN>\))|(?P<LBRACKET>\[)|(?P<RBRACKET>\])|(?P<LBRACE>\{)|(?P<RBRACE>\})|(?P<COLON>:)|(?P<COMMA>,)|(?P<DOT>\.)|(?P<OPERATOR>[\+\-\*/%])|(?P<POWER>\*\*)|(?P<WHITESPACE>\s+)|(?P<UNKNOWN>.)')
     
     def __init__(self):
         self.variables: Dict[str, Any] = {}
         self.functions: Dict[str, BlipFunction] = {}
+        self.call_stack: List[Dict[str, Any]] = []
+        self._init_builtins()
+    
+    def _init_builtins(self):
         self.builtin_functions = {
             'print': lambda *args: print(' '.join(str(arg) for arg in args)),
             'input': lambda prompt="": input(str(prompt)),
+            'int': self._safe_int, 'float': lambda x: float(str(x)), 'str': str,
             'abs': abs, 'sqrt': math.sqrt, 'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
             'asin': math.asin, 'acos': math.acos, 'atan': math.atan, 'atan2': math.atan2,
             'sinh': math.sinh, 'cosh': math.cosh, 'tanh': math.tanh,
@@ -34,18 +46,45 @@ class BlipInterpreter:
             'pow': pow, 'len': len, 'type': lambda x: type(x).__name__,
             'sum': lambda lst: sum(lst) if isinstance(lst, list) else lst,
             'avg': lambda lst: sum(lst) / len(lst) if isinstance(lst, list) and lst else 0,
-            'factorial': lambda n: math.factorial(int(n)) if n >= 0 else (_ for _ in ()).throw(ValueError("Factorial not defined for negative numbers")),
-            'gcd': math.gcd, 'lcm': lambda a, b: abs(int(a) * int(b)) // math.gcd(int(a), int(b)),
+            'factorial': self._factorial, 'gcd': math.gcd, 'lcm': self._lcm,
             'mod': lambda x, y: x % y, 'div': lambda x, y: x // y,
             'random': random.random, 'randint': random.randint,
             'range': lambda *args: list(range(*[int(a) for a in args])),
-            'append': lambda lst, item: lst.append(item) or lst if isinstance(lst, list) else (_ for _ in ()).throw(TypeError("append() requires a list")),
-            'pop': lambda lst, index=-1: lst.pop(int(index)) if isinstance(lst, list) else (_ for _ in ()).throw(TypeError("pop() requires a list")),
-            'size': len, 'sort': sorted, 'reverse': lambda lst: lst[::-1] if isinstance(lst, list) else lst,
+            'append': self._append, 'pop': self._pop, 'size': len, 'sort': sorted,
+            'reverse': lambda lst: lst[::-1] if isinstance(lst, list) else lst,
             'pi': lambda: math.pi, 'e': lambda: math.e, 'deg': math.degrees, 'rad': math.radians,
-            'is_prime': lambda n: n > 1 and all(n % i for i in range(2, int(n**0.5) + 1)),
-            'fibonacci': self._fib
+            'is_prime': self._is_prime, 'fib': self._fib,
+            'get': self._http_get, 'post': self._http_post
         }
+    
+    def _safe_int(self, x):
+        s = str(x)
+        return int(float(s)) if '.' in s else int(s)
+    
+    def _factorial(self, n):
+        n = int(n)
+        if n < 0:
+            raise ValueError("Factorial not defined for negative numbers")
+        return math.factorial(n)
+    
+    def _lcm(self, a, b):
+        a, b = int(a), int(b)
+        return abs(a * b) // math.gcd(a, b)
+    
+    def _append(self, lst, item):
+        if not isinstance(lst, list):
+            raise TypeError("append() requires a list")
+        lst.append(item)
+        return lst
+    
+    def _pop(self, lst, index=-1):
+        if not isinstance(lst, list):
+            raise TypeError("pop() requires a list")
+        return lst.pop(int(index))
+    
+    def _is_prime(self, n):
+        n = int(n)
+        return n > 1 and all(n % i for i in range(2, int(n**0.5) + 1))
     
     def _fib(self, n):
         n = int(n)
@@ -55,6 +94,28 @@ class BlipInterpreter:
         for _ in range(2, n + 1):
             a, b = b, a + b
         return b
+    
+    def _http_get(self, url: str, headers: dict = None) -> dict:
+        try:
+            response = requests.get(url, headers=headers or {})
+            return {
+                'status': response.status_code,
+                'content': response.text,
+                'json': response.json() if 'application/json' in response.headers.get('Content-Type', '').lower() else None
+            }
+        except Exception as e:
+            return {'status': None, 'error': str(e), 'content': None, 'json': None}
+    
+    def _http_post(self, url: str, data: Any = None, headers: dict = None) -> dict:
+        try:
+            response = requests.post(url, json=data, headers=headers or {})
+            return {
+                'status': response.status_code,
+                'content': response.text,
+                'json': response.json() if 'application/json' in response.headers.get('Content-Type', '').lower() else None
+            }
+        except Exception as e:
+            return {'status': None, 'error': str(e), 'content': None, 'json': None}
     
     def tokenize(self, code: str) -> List[Tuple[str, str]]:
         return [(match.lastgroup, match.group()) for match in self.TOKEN_PATTERN.finditer(code) if match.lastgroup != 'WHITESPACE']
@@ -104,13 +165,24 @@ class BlipInterpreter:
         return left, pos
     
     def parse_multiplication(self, tokens: List[Tuple[str, str]], start: int) -> Tuple[Any, int]:
-        left, pos = self.parse_power(tokens, start)
+        left, pos = self.parse_unary(tokens, start)
         while pos < len(tokens) and tokens[pos][0] == 'OPERATOR' and tokens[pos][1] in '*/%':
             op = tokens[pos][1]
             pos += 1
-            right, pos = self.parse_power(tokens, pos)
-            left = left * right if op == '*' else left / right if op == '/' else left % right
+            right, pos = self.parse_unary(tokens, pos)
+            if op == '/' and right == 0:
+                raise ZeroDivisionError("Division by zero")
+            elif op == '%' and right == 0:
+                raise ZeroDivisionError("Modulo by zero")
+            left = left / right if op == '/' else left % right if op == '%' else left * right
         return left, pos
+    
+    def parse_unary(self, tokens: List[Tuple[str, str]], start: int) -> Tuple[Any, int]:
+        if start < len(tokens) and tokens[start][0] == 'OPERATOR' and tokens[start][1] in '+-':
+            op = tokens[start][1]
+            expr, pos = self.parse_power(tokens, start + 1)
+            return -expr if op == '-' else expr, pos
+        return self.parse_power(tokens, start)
     
     def parse_power(self, tokens: List[Tuple[str, str]], start: int) -> Tuple[Any, int]:
         left, pos = self.parse_primary(tokens, start)
@@ -132,6 +204,8 @@ class BlipInterpreter:
             return token_value[1:-1], start + 1
         if token_type == 'LBRACKET':
             return self.parse_list(tokens, start)
+        if token_type == 'LBRACE':
+            return self.parse_dict(tokens, start)
         if token_type == 'IDENTIFIER':
             if start + 1 < len(tokens):
                 if tokens[start + 1][0] == 'LPAREN':
@@ -151,6 +225,47 @@ class BlipInterpreter:
         
         raise SyntaxError(f"Unexpected token: {token_value}")
     
+    def parse_dict(self, tokens: List[Tuple[str, str]], start: int) -> Tuple[Dict[Any, Any], int]:
+        pos = start + 1
+        result = {}
+        
+        if pos < len(tokens) and tokens[pos][0] != 'RBRACE':
+            while True:
+                # Parse key (expect STRING or IDENTIFIER)
+                if pos >= len(tokens):
+                    raise SyntaxError("Expected dictionary key")
+                key_type, key_value = tokens[pos]
+                if key_type == 'STRING':
+                    key = key_value[1:-1]
+                    pos += 1
+                elif key_type == 'IDENTIFIER':
+                    key = key_value
+                    pos += 1
+                else:
+                    raise SyntaxError(f"Expected string or identifier as dictionary key, got {key_value}")
+                
+                # Expect colon
+                if pos >= len(tokens) or tokens[pos][0] != 'COLON':
+                    raise SyntaxError("Expected ':' after dictionary key")
+                pos += 1
+                
+                # Parse value
+                value, pos = self.parse_expression(tokens, pos)
+                result[key] = value
+                
+                if pos >= len(tokens):
+                    raise SyntaxError("Expected closing brace")
+                if tokens[pos][0] == 'RBRACE':
+                    break
+                if tokens[pos][0] == 'COMMA':
+                    pos += 1
+                else:
+                    raise SyntaxError("Expected comma or closing brace")
+        elif pos >= len(tokens):
+            raise SyntaxError("Expected closing brace")
+        
+        return result, pos + 1
+    
     def parse_property_access(self, tokens: List[Tuple[str, str]], start: int) -> Tuple[Any, int]:
         var_name = tokens[start][1]
         if start + 2 >= len(tokens) or tokens[start + 1][0] != 'DOT' or tokens[start + 2][0] != 'IDENTIFIER':
@@ -163,13 +278,17 @@ class BlipInterpreter:
         
         var_value = self.variables[var_name]
         
+        if isinstance(var_value, dict):
+            if property_name in var_value:
+                return var_value[property_name], start + 3
+            raise KeyError(f"Key '{property_name}' not found in dictionary")
+        
         if property_name == 'length':
-            if isinstance(var_value, list):
+            if isinstance(var_value, (list, str)):
                 return len(var_value), start + 3
-            else:
-                raise TypeError(f"'{var_name}' does not have a length property")
-        else:
-            raise AttributeError(f"'{type(var_value).__name__}' object has no attribute '{property_name}'")
+            raise TypeError(f"'{var_name}' does not have a length property")
+        
+        raise AttributeError(f"'{type(var_value).__name__}' object has no attribute '{property_name}'")
     
     def parse_list(self, tokens: List[Tuple[str, str]], start: int) -> Tuple[List[Any], int]:
         pos = start + 1
@@ -187,6 +306,8 @@ class BlipInterpreter:
                     pos += 1
                 else:
                     raise SyntaxError("Expected comma or closing bracket")
+        elif pos >= len(tokens):
+            raise SyntaxError("Expected closing bracket")
         
         return elements, pos + 1
     
@@ -199,12 +320,12 @@ class BlipInterpreter:
         if var_name not in self.variables:
             raise NameError(f"Variable '{var_name}' not defined")
         var_value = self.variables[var_name]
-        if not isinstance(var_value, list):
+        if not isinstance(var_value, (list, str)):
             raise TypeError(f"'{var_name}' is not indexable")
         try:
             return var_value[int(index)], pos + 1
         except IndexError:
-            raise IndexError("List index out of range")
+            raise IndexError("Index out of range")
     
     def parse_function_call(self, tokens: List[Tuple[str, str]], start: int) -> Tuple[Any, int]:
         func_name = tokens[start][1]
@@ -223,6 +344,8 @@ class BlipInterpreter:
                     pos += 1
                 else:
                     raise SyntaxError("Expected comma or closing parenthesis")
+        elif pos >= len(tokens):
+            raise SyntaxError("Expected closing parenthesis")
         
         pos += 1
         
@@ -241,6 +364,8 @@ class BlipInterpreter:
             raise TypeError(f"Function '{func_name}' expects {len(func.params)} arguments, got {len(args)}")
         
         old_vars = self.variables.copy()
+        self.call_stack.append(old_vars)
+        
         for param, arg in zip(func.params, args):
             self.variables[param] = arg
         
@@ -248,30 +373,50 @@ class BlipInterpreter:
             result = self.execute_function_body(func.body)
         except ReturnException as e:
             result = e.value
+        except (BreakException, ContinueException):
+            result = None
         finally:
-            self.variables = old_vars
+            self.variables = self.call_stack.pop()
         
         return result if result is not None else 0
     
     def execute_function_body(self, body_lines: List[str]) -> Optional[Any]:
-        for line in body_lines:
-            line = line.strip()
+        i = 0
+        while i < len(body_lines):
+            line = body_lines[i].strip()
             if not line or line.startswith('#'):
+                i += 1
                 continue
+            
             if line.startswith('return '):
-                return_expr = line[7:-1]
-                tokens = self.tokenize(return_expr)
-                value, _ = self.parse_expression(tokens, 0)
-                raise ReturnException(value)
+                return_expr = line[7:].rstrip(';')
+                if return_expr:
+                    tokens = self.tokenize(return_expr)
+                    value, _ = self.parse_expression(tokens, 0)
+                    raise ReturnException(value)
+                raise ReturnException(None)
+            elif line.startswith(('if ', 'for ', 'while ')):
+                if line.startswith('if '):
+                    i = self.execute_if_block(body_lines, i)
+                elif line.startswith('for '):
+                    i = self.execute_for_block(body_lines, i)
+                elif line.startswith('while '):
+                    i = self.execute_while_block(body_lines, i)
+                i += 1
             else:
                 self.execute_line(line)
+                i += 1
         return None
     
     def parse_statement(self, tokens: List[Tuple[str, str]]) -> None:
         if not tokens:
             return
         
-        if tokens[0] == ('KEYWORD', 'if'):
+        if tokens[0] == ('KEYWORD', 'break'):
+            raise BreakException()
+        elif tokens[0] == ('KEYWORD', 'continue'):
+            raise ContinueException()
+        elif tokens[0] == ('KEYWORD', 'if'):
             self.parse_if_statement(tokens)
         elif tokens[0] == ('KEYWORD', 'func'):
             self.parse_function_definition(tokens)
@@ -290,7 +435,10 @@ class BlipInterpreter:
                 value, _ = self.parse_expression(tokens, pos + 2)
                 if var_name not in self.variables or not isinstance(self.variables[var_name], list):
                     raise TypeError(f"'{var_name}' is not a list")
-                self.variables[var_name][int(index)] = value
+                index = int(index)
+                if index >= len(self.variables[var_name]):
+                    raise IndexError("List assignment index out of range")
+                self.variables[var_name][index] = value
             else:
                 raise SyntaxError("Invalid list assignment")
         else:
@@ -337,93 +485,136 @@ class BlipInterpreter:
         condition, _ = self.parse_expression(tokens, 1)
         return ('while', condition)
     
+    def is_block_start(self, line: str) -> bool:
+        line = line.strip()
+        return line.startswith(('for ', 'while ', 'if ', 'func ')) and not line.startswith(('for;', 'while;', 'if;', 'func;'))
+    
     def find_block_end(self, lines: List[str], start_line: int) -> int:
-        brace_count = 1
-        end_line = start_line + 1
-        while end_line < len(lines) and brace_count > 0:
-            line = lines[end_line].strip()
-            if line.startswith(('for ', 'while ', 'if ')):
-                brace_count += 1
-            elif line.startswith('end;'):
-                brace_count -= 1
-            end_line += 1
-        if brace_count > 0:
-            raise SyntaxError("Missing 'end;' for block")
-        return end_line - 1
+        depth = 1
+        current_line = start_line + 1
+        
+        while current_line < len(lines) and depth > 0:
+            line = lines[current_line].strip()
+            
+            if self.is_block_start(line):
+                depth += 1
+            elif line == 'end;':
+                depth -= 1
+            
+            current_line += 1
+        
+        if depth > 0:
+            raise SyntaxError(f"Missing 'end;' for block starting at line {start_line + 1}")
+        
+        return current_line - 1
     
     def execute_function_block(self, lines: List[str], start_line: int) -> int:
-        func_line = lines[start_line].strip()[:-1]
+        func_line = lines[start_line].strip()
+        if func_line.endswith(';'):
+            func_line = func_line[:-1]
         tokens = self.tokenize(func_line)
         _, func_name, params = self.parse_function_definition(tokens)
-        end_line = start_line + 1
-        while end_line < len(lines):
-            if lines[end_line].strip().startswith('end;'):
-                break
-            end_line += 1
-        if end_line >= len(lines):
-            raise SyntaxError("Missing 'end;' for function definition")
+        
+        end_line = self.find_block_end(lines, start_line)
         body_lines = lines[start_line + 1:end_line]
+        
         self.functions[func_name] = BlipFunction(func_name, params, body_lines)
         return end_line
     
     def execute_for_block(self, lines: List[str], start_line: int) -> int:
-        for_line = lines[start_line].strip()[:-1]
+        for_line = lines[start_line].strip()
+        if for_line.endswith(';'):
+            for_line = for_line[:-1]
         tokens = self.tokenize(for_line)
         _, var_name, iterable = self.parse_for_statement(tokens)
+        
         end_line = self.find_block_end(lines, start_line)
-        old_var = self.variables.get(var_name)
+        
+        had_var = var_name in self.variables
+        old_var = self.variables.get(var_name) if had_var else None
+        
         try:
             for item in iterable:
                 self.variables[var_name] = item
-                self.execute_block_body(lines, start_line + 1, end_line)
+                try:
+                    self.execute_block_body(lines, start_line + 1, end_line)
+                except BreakException:
+                    break
+                except ContinueException:
+                    continue
         finally:
-            if old_var is not None:
+            if had_var:
                 self.variables[var_name] = old_var
-            elif var_name in self.variables:
-                del self.variables[var_name]
+            else:
+                self.variables.pop(var_name, None)
+        
         return end_line
     
     def execute_while_block(self, lines: List[str], start_line: int) -> int:
-        while_line = lines[start_line].strip()[:-1]
-        tokens = self.tokenize(while_line)
-        _, condition = self.parse_while_statement(tokens)
+        while_line = lines[start_line].strip()
+        if while_line.endswith(';'):
+            while_line = while_line[:-1]
+        
         end_line = self.find_block_end(lines, start_line)
-        while condition:
-            self.execute_block_body(lines, start_line + 1, end_line)
+        
+        while True:
             tokens = self.tokenize(while_line)
             _, condition = self.parse_while_statement(tokens)
+            if not condition:
+                break
+            try:
+                self.execute_block_body(lines, start_line + 1, end_line)
+            except BreakException:
+                break
+            except ContinueException:
+                continue
+        
         return end_line
     
     def execute_if_block(self, lines: List[str], start_line: int) -> int:
-        condition_line = lines[start_line].strip()[:-1]
+        condition_line = lines[start_line].strip()
+        if condition_line.endswith(';'):
+            condition_line = condition_line[:-1]
         tokens = self.tokenize(condition_line)
         condition, _ = self.parse_expression(tokens, 1)
+        
         end_line = self.find_block_end(lines, start_line)
         else_line = None
+        
         for i in range(start_line + 1, end_line):
-            if lines[i].strip().startswith('else;'):
+            line = lines[i].strip()
+            if line == 'else' or line == 'else;':
                 else_line = i
                 break
+        
         if condition:
             self.execute_block_body(lines, start_line + 1, else_line or end_line)
         elif else_line:
             self.execute_block_body(lines, else_line + 1, end_line)
+        
         return end_line
     
     def execute_block_body(self, lines: List[str], start: int, end: int) -> None:
         i = start
         while i < end:
             line = lines[i].strip()
-            if line.startswith(('for ', 'while ', 'if ')):
+            if not line or line.startswith('#') or line in ('else', 'else;'):
+                i += 1
+                continue
+                
+            if self.is_block_start(line):
                 if line.startswith('for '):
                     i = self.execute_for_block(lines, i)
                 elif line.startswith('while '):
                     i = self.execute_while_block(lines, i)
                 elif line.startswith('if '):
                     i = self.execute_if_block(lines, i)
+                elif line.startswith('func '):
+                    i = self.execute_function_block(lines, i)
+                i += 1
             else:
-                self.execute_line(lines[i])
-            i += 1
+                self.execute_line(line)
+                i += 1
     
     def execute_line(self, line: str) -> None:
         line = line.strip()
@@ -443,15 +634,17 @@ class BlipInterpreter:
                 if not line or line.startswith('#'):
                     line_num += 1
                     continue
-                if line.startswith('func '):
-                    line_num = self.execute_function_block(lines, line_num) + 1
-                elif line.startswith('if '):
-                    line_num = self.execute_if_block(lines, line_num) + 1
-                elif line.startswith('for '):
-                    line_num = self.execute_for_block(lines, line_num) + 1
-                elif line.startswith('while '):
-                    line_num = self.execute_while_block(lines, line_num) + 1
-                elif line in ('end;', 'else;'):
+                
+                if self.is_block_start(line):
+                    if line.startswith('func '):
+                        line_num = self.execute_function_block(lines, line_num) + 1
+                    elif line.startswith('if '):
+                        line_num = self.execute_if_block(lines, line_num) + 1
+                    elif line.startswith('for '):
+                        line_num = self.execute_for_block(lines, line_num) + 1
+                    elif line.startswith('while '):
+                        line_num = self.execute_while_block(lines, line_num) + 1
+                elif line in ('else', 'else;', 'end;'):
                     line_num += 1
                 else:
                     self.execute_line(line)
