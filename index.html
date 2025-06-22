@@ -110,12 +110,13 @@
             <li><a href="#syntax">Syntax</a></li>
             <li><a href="#functions">Built-in Functions</a></li>
             <li><a href="#examples">Examples</a></li>
+            <li><a href="#errors">Known Errors</a></li>
         </ul>
     </nav>
     <div class="container">
         <section id="overview">
             <h2>Overview</h2>
-            <p>Blip is a simple, interpreted programming language designed for ease of use and flexibility. It supports variables, functions, loops, conditionals, lists, dictionaries, threading, asynchronous calls, and built-in functions for mathematical, list, and HTTP operations. Blip is ideal for quick scripting tasks, API interactions, concurrent programming, and learning programming concepts.</p>
+            <p>Blip is a simple, interpreted programming language designed for ease of use and flexibility. It supports variables, functions, loops, conditionals, lists, dictionaries, and built-in functions for mathematical, list, file, JSON, and HTTP operations. Blip is ideal for quick scripting tasks, API interactions, and learning programming concepts.</p>
         </section>
         <section id="syntax">
             <h2>Syntax</h2>
@@ -126,11 +127,12 @@
                 <li><strong>Loops:</strong> Supports <code>for</code> and <code>while</code> loops, with <code>break</code> and <code>continue</code> for control flow.</li>
                 <li><strong>Conditionals:</strong> Uses <code>if</code>, <code>else</code>, and <code>end;</code> for control flow.</li>
                 <li><strong>Lists:</strong> Created with <code>[...]</code>, supports indexing (e.g., <code>list[0]</code>) and operations like append and pop.</li>
-                <li><strong>Dictionaries:</strong> Created with <code>{key: value}</code>, supports key access via dot notation (e.g., <code>dict.key</code>).</li>
-                <li><strong>Threading:</strong> Supports thread creation with <code>thread</code> and asynchronous calls with <code>async</code>, allowing concurrent execution.</li>
+                <li><strong>Dictionaries:</strong> Created with <code>{"key": value}</code>, supports key access (e.g., <code>dict["key"]</code>) or dot notation for identifiers (e.g., <code>dict.key</code>).</li>
+                <li><strong>File Operations:</strong> Functions for reading, writing, appending, and deleting files.</li>
+                <li><strong>JSON Operations:</strong> Functions for parsing and stringifying JSON, as well as reading and writing JSON files.</li>
                 <li><strong>Comments:</strong> Lines starting with <code>#</code> are ignored.</li>
                 <li><strong>Statements:</strong> Must end with a semicolon (<code>;</code>).</li>
-                <li><strong>Debug Mode:</strong> Enable with <code>{debug}</code> at the start of a script to show execution time and detailed error traces.</li>
+                <li><strong>Debug Mode:</strong> Enable with <code>{debug}</code> at the start of a script to show execution time.</li>
             </ul>
             <p>Example syntax:</p>
             <pre><code>
@@ -154,7 +156,7 @@ end;
 data = {"key": "value"};
 print(data.key);
 
-thread add(2, 3);
+write_file("test.txt", "Hello, Blip!");
             </code></pre>
         </section>
         <section id="functions">
@@ -162,31 +164,28 @@ thread add(2, 3);
             <p>Blip provides a rich set of built-in functions for various tasks:</p>
             <ul>
                 <li><code>print(arg, ...)</code>: Prints arguments to the console, space-separated.</li>
-                <li><code>input(prompt)</code>: Reads user input with an optional prompt.</li>
+                <li><code>input(prompt="")</code>: Reads user input with an optional prompt.</li>
                 <li><code>int(x)</code>, <code>float(x)</code>, <code>str(x)</code>: Type conversions.</li>
                 <li><code>abs(x)</code>, <code>sqrt(x)</code>, <code>sin(x)</code>, <code>cos(x)</code>, <code>tan(x)</code>, <code>asin(x)</code>, <code>acos(x)</code>, <code>atan(x)</code>, <code>atan2(y, x)</code>, <code>sinh(x)</code>, <code>cosh(x)</code>, <code>tanh(x)</code>: Mathematical functions.</li>
                 <li><code>log(x)</code>, <code>log10(x)</code>, <code>log2(x)</code>, <code>exp(x)</code>: Logarithmic and exponential functions.</li>
                 <li><code>floor(x)</code>, <code>ceil(x)</code>, <code>round(x)</code>: Rounding functions.</li>
                 <li><code>max(arg, ...)</code>, <code>min(arg, ...)</code>: Maximum and minimum values.</li>
                 <li><code>pow(x, y)</code>: Power function (x raised to y).</li>
-                <li><code>range(start, end, step)</code>: Generates a list of numbers.</li>
-                <li><code>append(lst, item)</code>, <code>pop(lst, index)</code>: List operations to add or remove elements.</li>
-                <li><code>sort(lst)</code>, <code>reverse(lst)</code>: Sort or reverse a list.</li>
                 <li><code>len(x)</code>, <code>size(x)</code>: Returns length of lists or strings.</li>
+                <li><code>type(x)</code>: Returns the type name of <code>x</code>.</li>
+                <li><code>range(start, end, step)</code>: Generates a list of numbers.</li>
+                <li><code>append(lst, item)</code>, <code>pop(lst, index=-1)</code>: List operations to add or remove elements.</li>
+                <li><code>sort(lst)</code>, <code>reverse(lst)</code>: Sort or reverse a list.</li>
                 <li><code>sum(lst)</code>, <code>avg(lst)</code>: Sum or average of list elements.</li>
                 <li><code>random()</code>, <code>randint(a, b)</code>: Random number generation.</li>
-                <li><code>factorial(n)</code>, <code>gcd(a, b)</code>, <code>lcm(a, b)</code>, <code>is_prime(n)</code>, <code>fib(n)</code>: Number theory functions.</li>
-                <li><code>mod(x, y)</code>, <code>div(x, y)</code>: Modulo and integer division.</li>
+                <li><code>factorial(n)</code>, <code>gcd(a, b)</code>, <code>lcm(a, b)</code>, <code>mod(x, y)</code>, <code>div(x, y)</code>: Number theory functions.</li>
+                <li><code>is_prime(n)</code>, <code>fib(n)</code>: Prime check and Fibonacci number.</li>
                 <li><code>pi()</code>, <code>e()</code>, <code>deg(x)</code>, <code>rad(x)</code>: Mathematical constants and conversions.</li>
-                <li><code>get(url, headers)</code>: Sends HTTP GET request, returns dictionary with <code>status</code>, <code>content</code>, <code>json</code>, and <code>error</code> keys.</li>
-                <li><code>post(url, data, headers)</code>: Sends HTTP POST request with JSON data, returns dictionary with <code>status</code>, <code>content</code>, <code>json</code>, and <code>error</code> keys.</li>
-                <li><code>thread_create(fn, arg, ...)</code>: Creates a thread to run function <code>fn</code> with arguments, returns thread ID.</li>
-                <li><code>thread_join(tid)</code>: Waits for thread with ID <code>tid</code> to complete, returns result or error.</li>
-                <li><code>thread_id()</code>: Returns the current thread's ID.</li>
-                <li><code>thread_lock()</code>, <code>thread_unlock()</code>: Acquires or releases a global thread lock.</li>
-                <li><code>async_call(fn, arg, ...)</code>: Asynchronously calls function <code>fn</code> with arguments, returns thread ID.</li>
-                <li><code>get_result(tid)</code>: Retrieves result of async call with thread ID <code>tid</code>.</li>
-                <li><code>type(x)</code>: Returns the type name of <code>x</code>.</li>
+                <li><code>get(url, headers=None)</code>: Sends HTTP GET request, returns dictionary with <code>status</code>, <code>content</code>, <code>json</code>, and <code>error</code> keys.</li>
+                <li><code>post(url, data=None, headers=None)</code>: Sends HTTP POST request with JSON data, returns dictionary with <code>status</code>, <code>content</code>, <code>json</code>, and <code>error</code> keys.</li>
+                <li><code>read_file(file)</code>, <code>write_file(file, data)</code>, <code>append_file(file, data)</code>: File read, write, and append operations.</li>
+                <li><code>file_exists(file)</code>, <code>list_dir(dir=".")</code>, <code>delete_file(file)</code>, <code>file_size(file)</code>: File system operations.</li>
+                <li><code>json_parse(string)</code>, <code>json_stringify(data)</code>, <code>read_json(file)</code>, <code>write_json(file, data)</code>: JSON parsing and file operations.</li>
             </ul>
             <p>For a full list, refer to the interpreter's <code>b</code> dictionary in the source code.</p>
         </section>
@@ -251,36 +250,48 @@ print(response.json);
                 </code></pre>
             </div>
             <div class="code-example">
-                <h3>Threading Example</h3>
+                <h3>File Operations</h3>
                 <pre><code>
-func compute_sum(a, b)
-    thread_lock();
-    print("Computing sum in thread ", thread_id());
-    thread_unlock();
-    return a + b;
-end;
-
-tid = thread_create(compute_sum, 5, 10);
-result = thread_join(tid);
-print("Thread result: ", result);
+write_file("test.txt", "Hello, Blip!");
+content = read_file("test.txt");
+print(content);
+append_file("test.txt", "\nMore text.");
+print(file_exists("test.txt"));
+print(file_size("test.txt"));
                 </code></pre>
             </div>
             <div class="code-example">
-                <h3>Asynchronous Call Example</h3>
+                <h3>JSON Operations</h3>
                 <pre><code>
-func long_task(x)
-    thread_lock();
-    print("Starting long task in thread ", thread_id());
-    thread_unlock();
-    return x * x;
-end;
-
-tid = async_call(long_task, 4);
-print("Async task started with thread ID: ", tid);
-result = get_result(tid);
-print("Async result: ", result);
+data = {"name": "Blip", "version": 1.0};
+write_json("config.json", data);
+parsed = read_json("config.json");
+print(parsed.name);
+json_str = json_stringify(data);
+print(json_str);
                 </code></pre>
             </div>
+        </section>
+        <section id="errors">
+            <h2>Known Errors</h2>
+            <p>Below are common errors you may encounter when using Blip:</p>
+            <ul>
+                <li><strong>SyntaxError: Missing ;</strong> All statements must end with a semicolon.</li>
+                <li><strong>SyntaxError: Expected )</strong> Mismatched parentheses in function calls or expressions.</li>
+                <li><strong>SyntaxError: Expected ]</strong> Mismatched brackets in list indexing or creation.</li>
+                <li><strong>SyntaxError: Expected }</strong> Mismatched braces in dictionary creation.</li>
+                <li><strong>SyntaxError: Missing end</strong> Control structures (if, for, while, func) must end with <code>end;</code>.</li>
+                <li><strong>NameError: Variable 'name' not defined</strong> Referencing an undefined variable.</li>
+                <li><strong>NameError: Function 'name' not defined</strong> Calling an undefined function.</li>
+                <li><strong>TypeError: 'name' not indexable</strong> Attempting to index a non-list or non-string variable.</li>
+                <li><strong>TypeError: append() requires list</strong> Using <code>append</code> on a non-list variable.</li>
+                <li><strong>IndexError: Index out of range</strong> Accessing a list or string with an invalid index.</li>
+                <li><strong>KeyError: Key 'name' not found</strong> Accessing a non-existent dictionary key.</li>
+                <li><strong>ZeroDivisionError: Division by zero</strong> Dividing or taking modulo by zero.</li>
+                <li><strong>FileNotFoundError</strong> Attempting to read or write a non-existent file.</li>
+                <li><strong>JSON Error</strong> Invalid JSON string in <code>json_parse</code> or file in <code>read_json</code>.</li>
+                <li><strong>KeyboardInterrupt</strong> Program interrupted by Ctrl+C, handled gracefully with a message.</li>
+            </ul>
         </section>
     </div>
     <footer>
