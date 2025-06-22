@@ -115,7 +115,7 @@
     <div class="container">
         <section id="overview">
             <h2>Overview</h2>
-            <p>Blip is a simple, interpreted programming language designed for ease of use and flexibility. It supports variables, functions, loops, conditionals, lists, dictionaries, and built-in functions for mathematical, list, and HTTP operations. Blip is ideal for quick scripting tasks, API interactions, and learning programming concepts.</p>
+            <p>Blip is a simple, interpreted programming language designed for ease of use and flexibility. It supports variables, functions, loops, conditionals, lists, dictionaries, threading, asynchronous calls, and built-in functions for mathematical, list, and HTTP operations. Blip is ideal for quick scripting tasks, API interactions, concurrent programming, and learning programming concepts.</p>
         </section>
         <section id="syntax">
             <h2>Syntax</h2>
@@ -123,15 +123,18 @@
             <ul>
                 <li><strong>Variables:</strong> Assign values using <code>=</code>. No type declarations needed.</li>
                 <li><strong>Functions:</strong> Defined with <code>func</code> keyword, followed by parameters and a body enclosed in <code>end;</code>.</li>
-                <li><strong>Loops:</strong> Supports <code>for</code> and <code>while</code> loops.</li>
+                <li><strong>Loops:</strong> Supports <code>for</code> and <code>while</code> loops, with <code>break</code> and <code>continue</code> for control flow.</li>
                 <li><strong>Conditionals:</strong> Uses <code>if</code>, <code>else</code>, and <code>end;</code> for control flow.</li>
-                <li><strong>Lists:</strong> Created with <code>[...]</code>, supports indexing and operations like append and pop.</li>
+                <li><strong>Lists:</strong> Created with <code>[...]</code>, supports indexing (e.g., <code>list[0]</code>) and operations like append and pop.</li>
                 <li><strong>Dictionaries:</strong> Created with <code>{key: value}</code>, supports key access via dot notation (e.g., <code>dict.key</code>).</li>
+                <li><strong>Threading:</strong> Supports thread creation with <code>thread</code> and asynchronous calls with <code>async</code>, allowing concurrent execution.</li>
                 <li><strong>Comments:</strong> Lines starting with <code>#</code> are ignored.</li>
                 <li><strong>Statements:</strong> Must end with a semicolon (<code>;</code>).</li>
+                <li><strong>Debug Mode:</strong> Enable with <code>{debug}</code> at the start of a script to show execution time and detailed error traces.</li>
             </ul>
             <p>Example syntax:</p>
             <pre><code>
+{debug}
 x = 10;
 
 func add(a, b)
@@ -150,25 +153,42 @@ end;
 
 data = {"key": "value"};
 print(data.key);
+
+thread add(2, 3);
             </code></pre>
         </section>
         <section id="functions">
             <h2>Built-in Functions</h2>
             <p>Blip provides a rich set of built-in functions for various tasks:</p>
             <ul>
-                <li><code>print(arg, ...)</code>: Prints arguments to the console.</li>
+                <li><code>print(arg, ...)</code>: Prints arguments to the console, space-separated.</li>
                 <li><code>input(prompt)</code>: Reads user input with an optional prompt.</li>
                 <li><code>int(x)</code>, <code>float(x)</code>, <code>str(x)</code>: Type conversions.</li>
-                <li><code>abs(x)</code>, <code>sqrt(x)</code>, <code>sin(x)</code>, etc.: Mathematical functions.</li>
+                <li><code>abs(x)</code>, <code>sqrt(x)</code>, <code>sin(x)</code>, <code>cos(x)</code>, <code>tan(x)</code>, <code>asin(x)</code>, <code>acos(x)</code>, <code>atan(x)</code>, <code>atan2(y, x)</code>, <code>sinh(x)</code>, <code>cosh(x)</code>, <code>tanh(x)</code>: Mathematical functions.</li>
+                <li><code>log(x)</code>, <code>log10(x)</code>, <code>log2(x)</code>, <code>exp(x)</code>: Logarithmic and exponential functions.</li>
+                <li><code>floor(x)</code>, <code>ceil(x)</code>, <code>round(x)</code>: Rounding functions.</li>
+                <li><code>max(arg, ...)</code>, <code>min(arg, ...)</code>: Maximum and minimum values.</li>
+                <li><code>pow(x, y)</code>: Power function (x raised to y).</li>
                 <li><code>range(start, end, step)</code>: Generates a list of numbers.</li>
-                <li><code>append(lst, item)</code>, <code>pop(lst, index)</code>: List operations.</li>
-                <li><code>random()</code>, <code>randint(a, b)</code>: Random number generation.</li>
-                <li><code>is_prime(n)</code>, <code>fib(n)</code>: Number theory functions.</li>
+                <li><code>append(lst, item)</code>, <code>pop(lst, index)</code>: List operations to add or remove elements.</li>
+                <li><code>sort(lst)</code>, <code>reverse(lst)</code>: Sort or reverse a list.</li>
                 <li><code>len(x)</code>, <code>size(x)</code>: Returns length of lists or strings.</li>
+                <li><code>sum(lst)</code>, <code>avg(lst)</code>: Sum or average of list elements.</li>
+                <li><code>random()</code>, <code>randint(a, b)</code>: Random number generation.</li>
+                <li><code>factorial(n)</code>, <code>gcd(a, b)</code>, <code>lcm(a, b)</code>, <code>is_prime(n)</code>, <code>fib(n)</code>: Number theory functions.</li>
+                <li><code>mod(x, y)</code>, <code>div(x, y)</code>: Modulo and integer division.</li>
+                <li><code>pi()</code>, <code>e()</code>, <code>deg(x)</code>, <code>rad(x)</code>: Mathematical constants and conversions.</li>
                 <li><code>get(url, headers)</code>: Sends HTTP GET request, returns dictionary with <code>status</code>, <code>content</code>, <code>json</code>, and <code>error</code> keys.</li>
                 <li><code>post(url, data, headers)</code>: Sends HTTP POST request with JSON data, returns dictionary with <code>status</code>, <code>content</code>, <code>json</code>, and <code>error</code> keys.</li>
+                <li><code>thread_create(fn, arg, ...)</code>: Creates a thread to run function <code>fn</code> with arguments, returns thread ID.</li>
+                <li><code>thread_join(tid)</code>: Waits for thread with ID <code>tid</code> to complete, returns result or error.</li>
+                <li><code>thread_id()</code>: Returns the current thread's ID.</li>
+                <li><code>thread_lock()</code>, <code>thread_unlock()</code>: Acquires or releases a global thread lock.</li>
+                <li><code>async_call(fn, arg, ...)</code>: Asynchronously calls function <code>fn</code> with arguments, returns thread ID.</li>
+                <li><code>get_result(tid)</code>: Retrieves result of async call with thread ID <code>tid</code>.</li>
+                <li><code>type(x)</code>: Returns the type name of <code>x</code>.</li>
             </ul>
-            <p>For a full list, refer to the interpreter's <code>builtin_functions</code> dictionary.</p>
+            <p>For a full list, refer to the interpreter's <code>b</code> dictionary in the source code.</p>
         </section>
         <section id="examples">
             <h2>Examples</h2>
@@ -230,10 +250,41 @@ print(response.status);
 print(response.json);
                 </code></pre>
             </div>
+            <div class="code-example">
+                <h3>Threading Example</h3>
+                <pre><code>
+func compute_sum(a, b)
+    thread_lock();
+    print("Computing sum in thread ", thread_id());
+    thread_unlock();
+    return a + b;
+end;
+
+tid = thread_create(compute_sum, 5, 10);
+result = thread_join(tid);
+print("Thread result: ", result);
+                </code></pre>
+            </div>
+            <div class="code-example">
+                <h3>Asynchronous Call Example</h3>
+                <pre><code>
+func long_task(x)
+    thread_lock();
+    print("Starting long task in thread ", thread_id());
+    thread_unlock();
+    return x * x;
+end;
+
+tid = async_call(long_task, 4);
+print("Async task started with thread ID: ", tid);
+result = get_result(tid);
+print("Async result: ", result);
+                </code></pre>
+            </div>
         </section>
     </div>
     <footer>
-        <p>© 2025 Blip Programming Language | All rights reserved.</p>
+        <p>© 2025 Blip Language Documentation. All rights reserved.</p>
     </footer>
     <script>
         document.querySelectorAll('nav a').forEach(anchor => {
