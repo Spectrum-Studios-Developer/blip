@@ -18,7 +18,7 @@ class I:
  def h(self,s,f):self.i=1;print("\nProgram interrupted");sys.exit(0)
  def c(self):
   if self.i:raise KeyboardInterrupt
- def pr(self,*a):print(' '.join(str(x)for x in a))
+ def pr(self,*a):print(' '.join(str(x)for x in a));sys.stdout.flush()
  def inp(self,p=""):
   try:return input(str(p))
   except KeyboardInterrupt:self.h(None,None)
@@ -53,15 +53,15 @@ class I:
   except Exception as e:return{'status':None,'error':str(e),'content':None,'json':None}
  def rdf(self,f):
   try:
-   with open(str(f),'r')as file:return file.read()
+   with open(str(f),'r',encoding='utf-8')as file:return file.read()
   except Exception as e:return f"Error: {e}"
  def wrf(self,f,d):
   try:
-   with open(str(f),'w')as file:file.write(str(d));return"Success"
+   with open(str(f),'w',encoding='utf-8')as file:file.write(str(d));return"Success"
   except Exception as e:return f"Error: {e}"
  def apf(self,f,d):
   try:
-   with open(str(f),'a')as file:file.write(str(d));return"Success"
+   with open(str(f),'a',encoding='utf-8')as file:file.write(str(d));return"Success"
   except Exception as e:return f"Error: {e}"
  def fex(self,f):return os.path.exists(str(f))
  def lsd(self,d='.'):
@@ -81,11 +81,11 @@ class I:
   except Exception as e:return f"JSON Error: {e}"
  def rjf(self,f):
   try:
-   with open(str(f),'r')as file:return json.load(file)
+   with open(str(f),'r',encoding='utf-8')as file:return json.load(file)
   except Exception as e:return f"JSON Error: {e}"
  def wjf(self,f,d):
   try:
-   with open(str(f),'w')as file:json.dump(d,file,ensure_ascii=False,indent=2);return"Success"
+   with open(str(f),'w',encoding='utf-8')as file:json.dump(d,file,ensure_ascii=False,indent=2);return"Success"
   except Exception as e:return f"JSON Error: {e}"
  def tk(self,c):return[(m.lastgroup,m.group())for m in self.T.finditer(c)if m.lastgroup!='W']
  def e(self,t,s=0):return self.o(t,s)
@@ -353,16 +353,26 @@ class I:
    except Exception as e:print(f"Error line {ln+1}: {e}");break
   if self.d and self.t:print(f"\nCompleted in {time.time()-self.t:.6f}s")
  def rf(self,fn):
-  if not fn.endswith('.blip'):print("Error: Must be .blip");return
+  if not fn.lower().endswith('.blip'):print(f"Error: File must have .blip extension, got: {fn}");return
+  if not os.path.exists(fn):print(f"Error: File '{fn}' not found");return
   try:
-   with open(fn,'r')as f:self.ex(f.read())
+   with open(fn,'r',encoding='utf-8')as f:
+    content=f.read()
+    if not content.strip():print(f"Warning: File '{fn}' is empty");return
+    self.ex(content)
   except KeyboardInterrupt:
    if self.d and self.t:print(f"\nInterrupted after {time.time()-self.t:.6f}s")
-  except FileNotFoundError:print(f"Error: File '{fn}' not found")
-  except Exception as e:print(f"Error: {e}")
+  except UnicodeDecodeError as e:print(f"Error: Cannot read file '{fn}' - encoding issue: {e}")
+  except PermissionError:print(f"Error: Permission denied accessing '{fn}'")
+  except Exception as e:print(f"Error reading '{fn}': {e}")
 def main():
  try:
   i=I()
-  if len(sys.argv)>1:i.rf(sys.argv[1])
+  if len(sys.argv)>1:
+   fn=sys.argv[1]
+   if not os.path.isabs(fn):fn=os.path.abspath(fn)
+   i.rf(fn)
+  else:print("Usage: blip <filename.blip>")
  except KeyboardInterrupt:print("\nInterrupted")
+ except Exception as e:print(f"Fatal error: {e}")
 if __name__=="__main__":main()
