@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import re,math,sys,random,requests,signal,time
+import re,math,sys,random,requests,signal,time,os,json
 from typing import List,Dict,Any,Tuple,Optional
 class F:
  __slots__=('n','p','b')
@@ -14,7 +14,7 @@ class I:
  def __init__(self):
   self.v,self.f,self.s,self.i,self.d,self.t={},{},[],0,0,None
   signal.signal(signal.SIGINT,self.h)
-  self.b={'print':lambda *a:self.pr(*a),'input':lambda p="":self.inp(p),'int':lambda x:self.it(x),'float':lambda x:float(str(x)),'str':str,'abs':abs,'sqrt':math.sqrt,'sin':math.sin,'cos':math.cos,'tan':math.tan,'asin':math.asin,'acos':math.acos,'atan':math.atan,'atan2':math.atan2,'sinh':math.sinh,'cosh':math.cosh,'tanh':math.tanh,'log':math.log,'log10':math.log10,'log2':math.log2,'exp':math.exp,'floor':math.floor,'ceil':math.ceil,'round':round,'max':max,'min':min,'pow':pow,'len':len,'type':lambda x:type(x).__name__,'sum':lambda l:sum(l)if isinstance(l,list)else l,'avg':lambda l:sum(l)/len(l)if isinstance(l,list)and l else 0,'factorial':lambda n:self.fa(n),'gcd':math.gcd,'lcm':lambda a,b:self.lc(a,b),'mod':lambda x,y:x%y,'div':lambda x,y:x//y,'random':random.random,'randint':random.randint,'range':lambda*a:list(range(*[int(x)for x in a])),'append':lambda l,i:self.ap(l,i),'pop':lambda l,i=-1:self.po(l,i),'size':len,'sort':sorted,'reverse':lambda l:l[::-1]if isinstance(l,list)else l,'pi':lambda:math.pi,'e':lambda:math.e,'deg':math.degrees,'rad':math.radians,'is_prime':lambda n:self.pm(n),'fib':lambda n:self.fi(n),'get':lambda u,h=None:self.ge(u,h),'post':lambda u,d=None,h=None:self.ps(u,d,h)}
+  self.b={'print':lambda *a:self.pr(*a),'input':lambda p="":self.inp(p),'int':lambda x:self.it(x),'float':lambda x:float(str(x)),'str':str,'abs':abs,'sqrt':math.sqrt,'sin':math.sin,'cos':math.cos,'tan':math.tan,'asin':math.asin,'acos':math.acos,'atan':math.atan,'atan2':math.atan2,'sinh':math.sinh,'cosh':math.cosh,'tanh':math.tanh,'log':math.log,'log10':math.log10,'log2':math.log2,'exp':math.exp,'floor':math.floor,'ceil':math.ceil,'round':round,'max':max,'min':min,'pow':pow,'len':len,'type':lambda x:type(x).__name__,'sum':lambda l:sum(l)if isinstance(l,list)else l,'avg':lambda l:sum(l)/len(l)if isinstance(l,list)and l else 0,'factorial':lambda n:self.fa(n),'gcd':math.gcd,'lcm':lambda a,b:self.lc(a,b),'mod':lambda x,y:x%y,'div':lambda x,y:x//y,'random':random.random,'randint':random.randint,'range':lambda*a:list(range(*[int(x)for x in a])),'append':lambda l,i:self.ap(l,i),'pop':lambda l,i=-1:self.po(l,i),'size':len,'sort':sorted,'reverse':lambda l:l[::-1]if isinstance(l,list)else l,'pi':lambda:math.pi,'e':lambda:math.e,'deg':math.degrees,'rad':math.radians,'is_prime':lambda n:self.pm(n),'fib':lambda n:self.fi(n),'get':lambda u,h=None:self.ge(u,h),'post':lambda u,d=None,h=None:self.ps(u,d,h),'read_file':lambda f:self.rdf(f),'write_file':lambda f,d:self.wrf(f,d),'append_file':lambda f,d:self.apf(f,d),'file_exists':lambda f:self.fex(f),'list_dir':lambda d='.':self.lsd(d),'delete_file':lambda f:self.dlf(f),'file_size':lambda f:self.fsz(f),'json_parse':lambda s:self.jpa(s),'json_stringify':lambda d:self.jst(d),'read_json':lambda f:self.rjf(f),'write_json':lambda f,d:self.wjf(f,d)}
  def h(self,s,f):self.i=1;print("\nProgram interrupted");sys.exit(0)
  def c(self):
   if self.i:raise KeyboardInterrupt
@@ -51,6 +51,42 @@ class I:
    return{'status':r.status_code,'content':r.text,'json':r.json()if'application/json'in r.headers.get('Content-Type','')else None}
   except KeyboardInterrupt:self.h(None,None)
   except Exception as e:return{'status':None,'error':str(e),'content':None,'json':None}
+ def rdf(self,f):
+  try:
+   with open(str(f),'r')as file:return file.read()
+  except Exception as e:return f"Error: {e}"
+ def wrf(self,f,d):
+  try:
+   with open(str(f),'w')as file:file.write(str(d));return"Success"
+  except Exception as e:return f"Error: {e}"
+ def apf(self,f,d):
+  try:
+   with open(str(f),'a')as file:file.write(str(d));return"Success"
+  except Exception as e:return f"Error: {e}"
+ def fex(self,f):return os.path.exists(str(f))
+ def lsd(self,d='.'):
+  try:return os.listdir(str(d))
+  except Exception as e:return f"Error: {e}"
+ def dlf(self,f):
+  try:os.remove(str(f));return"Success"
+  except Exception as e:return f"Error: {e}"
+ def fsz(self,f):
+  try:return os.path.getsize(str(f))
+  except Exception as e:return f"Error: {e}"
+ def jpa(self,s):
+  try:return json.loads(str(s))
+  except Exception as e:return f"JSON Error: {e}"
+ def jst(self,d):
+  try:return json.dumps(d,ensure_ascii=False)
+  except Exception as e:return f"JSON Error: {e}"
+ def rjf(self,f):
+  try:
+   with open(str(f),'r')as file:return json.load(file)
+  except Exception as e:return f"JSON Error: {e}"
+ def wjf(self,f,d):
+  try:
+   with open(str(f),'w')as file:json.dump(d,file,ensure_ascii=False,indent=2);return"Success"
+  except Exception as e:return f"JSON Error: {e}"
  def tk(self,c):return[(m.lastgroup,m.group())for m in self.T.finditer(c)if m.lastgroup!='W']
  def e(self,t,s=0):return self.o(t,s)
  def o(self,t,s):
