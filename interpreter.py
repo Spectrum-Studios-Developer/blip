@@ -329,8 +329,9 @@ class I:
  def el(self,l):
   self.c();l=l.strip()
   if not l or l.startswith('#'):return
-  if not l.endswith(';'):raise SyntaxError("Missing ;")
-  t=self.tk(l[:-1]);self.pst(t)
+  cl=l.split('#')[0].rstrip()
+  if not cl.endswith(';'):raise SyntaxError("Missing ;")
+  t=self.tk(cl[:-1]);self.pst(t)
  def ex(self,c):
   ls=c.split('\n')
   if ls and ls[0].strip()=='{debug}':self.d,self.t,ls=1,time.time(),ls[1:]
